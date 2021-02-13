@@ -99,12 +99,12 @@ ilo_plot <- ggplot(ilo_data, aes(x = working_hours, y = hourly_compensation)) +
 
 ilo_plot
 
-
+# Creamos tema personalizado ----
 # Define your own theme function below
 theme_ilo <- function() {
   theme_minimal() +
     theme(
-      text = element_text(family = "Bookman", color = "gray25"),
+      text = element_text(family = "Montserrat", color = "gray25"),
       plot.subtitle = element_text(size = 12),
       plot.caption = element_text(color = "gray30"),
       plot.background = element_rect(fill = "gray95"),
@@ -129,8 +129,117 @@ ilo_plot +
     strip.text = element_text(color = "white")
   )
 
-
+# DOT PLOT ----
 
 # Create the dot plot
 ggplot(ilo_data) +
   geom_path(aes(x = working_hours, y = country))
+
+
+ggplot(ilo_data) +
+  geom_path(aes(x = working_hours, y = country),
+            # Add an arrow to each path
+            arrow = arrow(length = unit(1.5, "mm"), type = "closed"))
+
+
+ggplot(ilo_data) +
+  geom_path(aes(x = working_hours, y = country),
+            arrow = arrow(length = unit(1.5, "mm"), type = "closed")) +
+  # Add a geom_text() geometry
+  geom_text(
+    aes(x = working_hours,
+        y = country,
+        label = round(working_hours, 1))
+  )
+
+
+library(forcats)
+
+# Reorder country factor levels
+ilo_data <- ilo_data %>%
+  # Arrange data frame
+  arrange(year) %>%
+  # Reorder countries by working hours in 2006
+  mutate(country = fct_reorder(country,
+                               working_hours,
+                               last))
+
+# Plot again
+ggplot(ilo_data) +
+  geom_path(aes(x = working_hours, y = country),
+            arrow = arrow(length = unit(1.5, "mm"), type = "closed")) +
+  geom_text(
+    aes(x = working_hours,
+        y = country,
+        label = round(working_hours, 1))
+  )
+
+
+# Save plot into an object for reuse
+ilo_dot_plot <- ggplot(ilo_data) +
+  geom_path(aes(x = working_hours, y = country),
+            arrow = arrow(length = unit(1.5, "mm"), type = "closed")) +
+  # Specify the hjust aesthetic with a conditional value
+  geom_text(
+    aes(x = working_hours,
+        y = country,
+        label = round(working_hours, 1),
+        hjust = ifelse(year == "2006",1.4,-0.4)
+    ),
+    # Change the appearance of the text
+    size = 3,
+    family = "Bookman",
+    color = "gray25"
+  )
+
+ilo_dot_plot
+
+
+# APLICAMOS NUESTRO TEMA Y ADAPTAMOS EL TAMAÑO PARA EVITAR OVERLAPPING CON LOS BORDES ----
+# Reuse ilo_dot_plot
+ilo_dot_plot <- ilo_dot_plot +
+  # Add labels to the plot
+  labs(
+    x = "Working hours per week",
+    y = "Country",
+    title = "People work less in 2006 compared to 1996",
+    subtitle = "Working hours in European countries, development since 1996",
+    caption = "Data source: ILO, 2017"
+  ) +
+  # Apply your theme
+  theme_ilo() +
+  # Change the viewport
+  coord_cartesian(xlim = c(25, 41))
+
+# View the plot
+ilo_dot_plot
+
+
+# Optimization for mobile devices ----
+# Compute temporary data set for optimal label placement
+median_working_hours <- ilo_data %>%
+  group_by(country) %>%
+  summarize(median_working_hours_per_country = median(working_hours)) %>%
+  ungroup()
+
+# Have a look at the structure of this data set
+str(median_working_hours)
+
+ilo_dot_plot +
+  # Add label for country
+  geom_text(data = median_working_hours,
+            aes(y = country,
+                x = median_working_hours_per_country,
+                label = country),
+            vjust = 2,
+            family = "Bookman",
+            color = "gray25") +
+  # Remove axes and grids
+  theme(
+    axis.ticks = element_blank(),
+    axis.title = element_blank(),
+    axis.text = element_blank(),
+    panel.grid = element_blank(),
+    # Also, let's reduce the font size of the subtitle
+    plot.subtitle = element_text(size = 9)
+  )
